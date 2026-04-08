@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocean Wave Particle Trajectories — Linear Wave Theory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+/* =============================================================
+   OCEAN WAVE VISUALIZATION — CSS
+   ============================================================= */
+:root {
+  --bg:          #020c17;
+  --panel-bg:    #040e1b;
+  --border:      #0b1e31;
+  --deep:        #29b6f6;
+  --inter:       #26c6a6;
+  --shal:        #ffa726;
+  --d0:          #f06292;
+  --d1:          #ff8a65;
+  --d2:          #4fc3f7;
+  --d3:          #9575cd;
+  --d4:          #78909c;
+  --text:        #7da8c8;
+  --text-hi:     #cce0f5;
+  --text-dim:    #253d55;
+  --mono:        'IBM Plex Mono', monospace;
+  --sans:        'IBM Plex Sans', sans-serif;
+  --serif:       'Playfair Display', serif;
+  --r:           8px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  padding: 20px 28px 60px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+header {
+  text-align: center;
+  padding: 30px 0 28px;
+}
+header h1 {
+  font-family: var(--serif);
+  font-size: clamp(2.25rem, 6.75vw, 3.15rem);
+  color: var(--text-hi);
+  letter-spacing: -0.3px;
+  margin-bottom: 8px;
+}
+.sub {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+.rule {
+  width: 80px; height: 1px;
+  background: linear-gradient(90deg,transparent,var(--deep),transparent);
+  margin: 0 auto;
+}
+
+/* ── Controls ────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 16px;
+  padding: 10px 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.btn {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  padding: 5px 11px;
+  background: var(--border);
+  border: 1px solid #142233;
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .1s;
+  user-select: none;
+}
+.btn:hover { background: #142233; color: var(--text-hi); }
+.btn.on  { border-color: var(--deep); color: var(--deep); }
+.speed-wrap {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 1.05rem; color: var(--text-dim);
+}
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 80px; height: 3px;
+  border-radius: 2px;
+  background: var(--border); outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--deep); cursor: pointer;
+}
+.legend {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto;
+}
+.leg { display:flex; align-items:center; gap:5px;
+  font-family: var(--mono); font-size: 0.95rem; color: var(--text); }
+.ldot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ── Panels ──────────────────────────────────────────────── */
+.panel {
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--panel-bg);
+}
+.phead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 11px 16px 7px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap; gap: 8px;
+}
+.phead h2 {
+  font-family: var(--serif); font-size: 1.5rem; color: var(--text-hi);
+}
+.tag {
+  font-family: var(--mono); font-size: 1.0rem;
+  padding: 2px 8px; border-radius: 3px; border: 1px solid;
+}
+.panel[data-r=deep]   .tag { color: var(--deep); border-color: var(--deep); }
+.panel[data-r=inter]  .tag { color: var(--inter); border-color: var(--inter); }
+.panel[data-r=shal]   .tag { color: var(--shal);  border-color: var(--shal); }
+.pmeta {
+  padding: 4px 16px 6px;
+  font-family: var(--mono); font-size: 0.93rem;
+  color: var(--text-dim);
+  display: flex; gap: 14px; flex-wrap: wrap;
+}
+.pmeta span { color: var(--text); }
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Physics table ───────────────────────────────────────── */
+.ptable {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow-x: auto;
+  background: var(--panel-bg);
+}
+.ptable h3 {
+  font-family: var(--serif); font-size: 1.43rem;
+  color: var(--text-hi);
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+}
+table { width:100%; border-collapse:collapse;
+  font-family: var(--mono); font-size: 0.95rem; }
+th { padding: 7px 12px; color: var(--text-dim); font-weight:500;
+  text-align:left; border-bottom:1px solid var(--border);
+  background: rgba(255,255,255,.015); white-space:nowrap; }
+td { padding: 7px 12px; color: var(--text);
+  border-bottom: 1px solid var(--border); vertical-align:top; }
+tr:last-child td { border-bottom: none; }
+td.fml { color: var(--text-dim); }
+td.dw  { color: var(--deep); }
+td.sw  { color: var(--shal); }
+
+.footnote {
+  font-family: var(--mono); font-size: 0.9rem; color: var(--text-dim);
+  text-align: center; margin-top: 18px; padding: 0 10px;
+  line-height: 1.7;
+}
+
+/* ── Classification criteria ─────────────────────────────── */
+.criteria {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--panel-bg);
+  overflow: hidden;
+}
+.criteria h3 {
+  font-family: var(--serif); font-size: 1.43rem;
+  color: var(--text-hi);
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.crit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+.crit-card {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border);
+}
+.crit-card:last-child { border-right: none; }
+.crit-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 11px;
+}
+.crit-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.deep-dot  { background: var(--deep); }
+.inter-dot { background: var(--inter); }
+.shal-dot  { background: var(--shal); }
+.crit-name {
+  font-family: var(--serif); font-size: 1.35rem; color: var(--text-hi);
+}
+.crit-row {
+  display: flex; flex-direction: column;
+  font-family: var(--mono); font-size: 0.93rem;
+  margin-bottom: 7px;
+}
+.crit-label {
+  color: var(--text-dim); margin-bottom: 1px;
+}
+.crit-val { color: var(--text); }
+.deep-val  { color: var(--deep); font-weight: 500; }
+.inter-val { color: var(--inter); font-weight: 500; }
+.shal-val  { color: var(--shal); font-weight: 500; }
+.crit-ex {
+  margin-top: 10px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--border);
+  font-family: var(--mono); font-size: 0.9rem;
+  color: var(--text-dim); line-height: 1.65;
+}
+.crit-ex-label {
+  display: block;
+  color: var(--text); margin-bottom: 3px;
+  font-weight: 500;
+}
+.crit-note {
+  font-family: var(--mono); font-size: 0.92rem;
+  color: var(--text-dim);
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border);
+  line-height: 1.7;
+}
+.crit-note-label {
+  color: var(--text); font-weight: 500; margin-right: 6px;
+}
+@media (max-width: 780px) {
+  .crit-grid { grid-template-columns: 1fr; }
+  .crit-card { border-right: none; border-bottom: 1px solid var(--border); }
+  .crit-card:last-child { border-bottom: none; }
+}
+
+@media (max-width: 580px) {
+  th:nth-child(4), td:nth-child(4) { display:none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="sub">Linear Wave Theory &nbsp;·&nbsp; Airy Waves &nbsp;·&nbsp; Lagrangian Orbital Motion</p>
+  <h1>Ocean Wave Particle Trajectories</h1>
+  <div class="rule"></div>
+</header>
+
+<!-- Controls -->
+<div class="controls">
+  <button class="btn" id="playBtn" onclick="togglePlay()">⏸ Pause</button>
+  <button class="btn on"  id="trailBtn"  onclick="toggleTrails()">⊙ Trails</button>
+  <button class="btn on"  id="orbitBtn"  onclick="toggleOrbits()">◯ Orbits</button>
+  <button class="btn"     id="resetBtn"  onclick="resetAnim()">↺ Reset</button>
+  <div class="speed-wrap">
+    <span>Speed</span>
+    <input type="range" id="spd" min="0.1" max="4" step="0.1" value="1"
+           oninput="setSpeed(this.value)">
+    <span id="spdVal">1.0×</span>
+  </div>
+  <div class="legend">
+    <div class="leg"><div class="ldot" style="background:var(--d0)"></div>z = 0</div>
+    <div class="leg"><div class="ldot" style="background:var(--d1)"></div>z = −¼h</div>
+    <div class="leg"><div class="ldot" style="background:var(--d2)"></div>z = −½h</div>
+    <div class="leg"><div class="ldot" style="background:var(--d3)"></div>z = −¾h</div>
+    <div class="leg"><div class="ldot" style="background:var(--d4)"></div>z = −h</div>
+  </div>
+</div>
+
+<!-- Panel 1: Deep Water -->
+<div class="panel" data-r="deep">
+  <div class="phead">
+    <h2>Deep Water Waves</h2>
+    <span class="tag">kh = 4.0 &ensp;|&ensp; h/λ = 0.637 &ensp;|&ensp; h > λ/2</span>
+  </div>
+  <div class="pmeta">
+    Orbit: <span>Circular ↻</span> &ensp;
+    Decay: <span>e<sup>kz</sup> (exponential)</span> &ensp;
+    Phase speed: <span>c ≈ √(g/k)</span> &ensp;
+    Group speed: <span>c<sub>g</sub> = c/2</span>
+  </div>
+  <canvas id="c0" width="780" height="300"></canvas>
+</div>
+
+<!-- Panel 2: Intermediate Water -->
+<div class="panel" data-r="inter">
+  <div class="phead">
+    <h2>Intermediate Water Waves</h2>
+    <span class="tag">kh = 1.2 &ensp;|&ensp; h/λ = 0.191 &ensp;|&ensp; λ/20 &lt; h &lt; λ/2</span>
+  </div>
+  <div class="pmeta">
+    Orbit: <span>Elliptical</span> &ensp;
+    Decay: <span>cosh/sinh kernel</span> &ensp;
+    Phase speed: <span>c = √(g tanh(kh)/k)</span> &ensp;
+    Group speed: <span>c/2 &lt; c<sub>g</sub> &lt; c</span>
+  </div>
+  <canvas id="c1" width="780" height="300"></canvas>
+</div>
+
+<!-- Panel 3: Shallow Water -->
+<div class="panel" data-r="shal">
+  <div class="phead">
+    <h2>Shallow Water Waves</h2>
+    <span class="tag">kh = 0.25 &ensp;|&ensp; h/λ = 0.040 &ensp;|&ensp; h &lt; λ/20</span>
+  </div>
+  <div class="pmeta">
+    Orbit: <span>Flat ellipse (strongly elongated)</span> &ensp;
+    Horizontal: <span>Depth-uniform</span> &ensp;
+    Phase speed: <span>c ≈ √(gh)</span> &ensp;
+    Group speed: <span>c<sub>g</sub> ≈ c (non-dispersive)</span>
+  </div>
+  <canvas id="c2" width="780" height="300"></canvas>
+</div>
+
+<!-- Physics summary table -->
+<div class="criteria">
+  <h3>Wave Regime Classification Criteria</h3>
+  <div class="crit-grid">
+
+    <div class="crit-card deep-card">
+      <div class="crit-header">
+        <span class="crit-dot deep-dot"></span>
+        <span class="crit-name">Deep Water</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">h/λ criterion</span>
+        <span class="crit-val deep-val">h/λ &gt; ½</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">kh criterion</span>
+        <span class="crit-val deep-val">kh &gt; π ≈ 3.14</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">tanh(kh)</span>
+        <span class="crit-val">≈ 1 &nbsp;(error &lt; 0.4%)</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">Orbit decay</span>
+        <span class="crit-val">e<sup>kz</sup> — negligible at z = −λ/2</span>
+      </div>
+      <div class="crit-ex">
+        <span class="crit-ex-label">Examples</span>
+        Ocean swell (λ ≈ 150 m) in water &gt; 75 m depth;
+        wind waves in deep ocean; seismic T-waves.
+      </div>
+    </div>
+
+    <div class="crit-card inter-card">
+      <div class="crit-header">
+        <span class="crit-dot inter-dot"></span>
+        <span class="crit-name">Intermediate Water</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">h/λ criterion</span>
+        <span class="crit-val inter-val">1/20 &lt; h/λ &lt; ½</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">kh criterion</span>
+        <span class="crit-val inter-val">0.31 &lt; kh &lt; 3.14</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">tanh(kh)</span>
+        <span class="crit-val">Full dispersion relation required</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">Orbit shape</span>
+        <span class="crit-val">Elliptical; eccentricity increases with depth</span>
+      </div>
+      <div class="crit-ex">
+        <span class="crit-ex-label">Examples</span>
+        Swell shoaling onto the continental shelf;
+        coastal long-period waves; harbor resonance.
+      </div>
+    </div>
+
+    <div class="crit-card shal-card">
+      <div class="crit-header">
+        <span class="crit-dot shal-dot"></span>
+        <span class="crit-name">Shallow Water</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">h/λ criterion</span>
+        <span class="crit-val shal-val">h/λ &lt; 1/20</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">kh criterion</span>
+        <span class="crit-val shal-val">kh &lt; π/10 ≈ 0.31</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">tanh(kh)</span>
+        <span class="crit-val">≈ kh &nbsp;(error &lt; 2%)</span>
+      </div>
+      <div class="crit-row">
+        <span class="crit-label">Orbit shape</span>
+        <span class="crit-val">Strongly flattened ellipse; horiz. nearly depth-uniform</span>
+      </div>
+      <div class="crit-ex">
+        <span class="crit-ex-label">Examples</span>
+        Tsunamis in ocean basins (λ ~ 200 km, h ~ 4 km);
+        tides; storm surges in coastal zones.
+      </div>
+    </div>
+
+  </div><!-- end crit-grid -->
+
+  <div class="crit-note">
+    <span class="crit-note-label">Note on h/λ vs kh</span>
+    The two criteria are equivalent: kh = 2πh/λ, so h/λ = kh/(2π).
+    The tanh(kh) approximations are accurate to &lt;1% error at the stated boundaries.
+    Practical rule of thumb: swell with T = 10 s has λ ≈ 156 m in deep water (c = gT/2π);
+    it enters shallow-water regime in h &lt; 7.8 m, and deep-water regime applies for h &gt; 78 m.
+  </div>
+</div>
+
+<div class="ptable">
+  <h3>Linear Wave Theory — Key Relations</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Quantity</th>
+        <th>General (finite depth)</th>
+        <th class="dw">Deep Water &nbsp;(kh ≫ 1)</th>
+        <th class="sw">Shallow Water &nbsp;(kh ≪ 1)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Dispersion</td>
+        <td class="fml">ω² = gk tanh(kh)</td>
+        <td class="dw fml">ω² ≈ gk</td>
+        <td class="sw fml">ω² ≈ gk²h &nbsp;(ω = k√gh)</td>
+      </tr>
+      <tr>
+        <td>Phase speed</td>
+        <td class="fml">c = √[g tanh(kh) / k]</td>
+        <td class="dw fml">c ≈ √(g/k) = gT/(2π)</td>
+        <td class="sw fml">c ≈ √(gh) &nbsp;(depth-controlled)</td>
+      </tr>
+      <tr>
+        <td>Group speed</td>
+        <td class="fml">c_g = c·[1 + 2kh/sinh(2kh)]/2</td>
+        <td class="dw fml">c_g = c/2 &nbsp;(dispersive)</td>
+        <td class="sw fml">c_g ≈ c &nbsp;(non-dispersive)</td>
+      </tr>
+      <tr>
+        <td>Horiz. orbit</td>
+        <td class="fml">a·cosh[k(z+h)] / sinh(kh)</td>
+        <td class="dw fml">≈ a·e^(kz) → 0 rapidly</td>
+        <td class="sw fml">≈ a/(kh) &nbsp;[depth-uniform]</td>
+      </tr>
+      <tr>
+        <td>Vert. orbit</td>
+        <td class="fml">a·sinh[k(z+h)] / sinh(kh)</td>
+        <td class="dw fml">≈ a·e^(kz) → 0 rapidly</td>
+        <td class="sw fml">≈ a(z+h)/h &nbsp;[linear in z]</td>
+      </tr>
+      <tr>
+        <td>Orbit shape</td>
+        <td>Ellipse; e varies with depth</td>
+        <td class="dw">Circle at all depths</td>
+        <td class="sw">Flat ellipse; horiz. ≫ vert.</td>
+      </tr>
+      <tr>
+        <td>Bottom BC</td>
+        <td colspan="3" class="fml">w = 0 at z = −h
+          &ensp;⟹&ensp; vertical orbit closes (Av = 0) at seafloor for all regimes</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p class="footnote">
+  Particle displacements: ξ = −a·cosh[k(z+h)]/sinh(kh)·sin(kx₀−ωt) &ensp;|&ensp;
+  ζ = a·sinh[k(z+h)]/sinh(kh)·cos(kx₀−ωt)<br>
+  Orbits are clockwise for waves propagating right. Amplitudes are display-normalized (schematic).
+  Derived from Airy (1845) linear wave theory.
+</p>
+
+<!-- ============================================================
+     JAVASCRIPT — WAVE SIMULATION
+     ============================================================ -->
+<script>
+'use strict';
+
+// ── Global animation state ────────────────────────────────
+let TIME   = 0;       // simulation time [s]
+let SPEED  = 1.0;     // playback multiplier
+let PLAY   = true;
+let TRAILS = true;
+let ORBITS = true;
+let LAST   = null;
+
+// ── Physical / display constants (same for all panels) ────
+const CW      = 780;          // canvas width  [px]
+const CH      = 300;          // canvas height [px]
+const SY      = 68;           // mean surface Y [px from top]
+const FY      = 256;          // seafloor Y     [px from top]
+const DH      = FY - SY;      // water column display height = 188 px
+const LAM     = 300;          // display wavelength [px] (same all panels)
+const K       = 2*Math.PI/LAM;
+const A       = 12;           // wave amplitude = orbit amplitude at surface [px]
+const TDISP   = 8.0;          // display wave period [s]
+const OM      = 2*Math.PI/TDISP;
+const NP      = 4;            // particles per depth level
+const DFS     = [0, 0.25, 0.5, 0.75, 1.0];
+const DCOLS   = ['#f06292','#ff8a65','#4fc3f7','#9575cd','#78909c'];
+const DLABELS = ['z = 0', 'z = −¼h', 'z = −½h', 'z = −¾h', 'z = −h'];
+
+// ── Panel configurations ──────────────────────────────────
+const CFGS = [
+  { id:'c0', kh:4.0,  amp:22, accent:'#29b6f6', w0:'#0d47a1', w1:'#1565c0', label:'Deep Water' },
+  { id:'c1', kh:1.2,  amp:18, accent:'#26c6a6', w0:'#00695c', w1:'#00897b', label:'Intermediate' },
+  { id:'c2', kh:0.25, amp:12, accent:'#ffa726', w0:'#e65100', w1:'#f57c00', label:'Shallow Water' },
+];
+
+// ─────────────────────────────────────────────────────────
+// WavePanel class
+// ─────────────────────────────────────────────────────────
+class WavePanel {
+  constructor(cfg) {
+    this.el  = document.getElementById(cfg.id);
+    this.ctx = this.el.getContext('2d');
+    this.kh  = cfg.kh;
+    this.amp = cfg.amp;
+    this.acc = cfg.accent;
+    this.w0  = cfg.w0;
+    this.w1  = cfg.w1;
+    this.lbl = cfg.label;
+
+    // Precompute orbit semi-axes for each depth fraction
+    // Normalised so surface vertical amplitude = A
+    this.axes = DFS.map(df => this._axes(df));
+
+    // Build particle array
+    this.maxTrail = 260;
+    this.parts = this._mkParts();
+  }
+
+  // Orbit semi-axes (display pixels), normalised to A at surface
+  _axes(df) {
+    const kz1 = this.kh * (1 - df);   // = k(z₀+h), ranges from kh→0
+    const Ah  = this.amp * Math.cosh(kz1) / Math.sinh(this.kh);
+    const Av  = this.amp * Math.sinh(kz1) / Math.sinh(this.kh);
+    return { Ah, Av };
+  }
+
+  _mkParts() {
+    const ps  = [];
+    const gap = CW / (NP + 1);
+    DFS.forEach((df, di) => {
+      for (let pi = 0; pi < NP; pi++) {
+        ps.push({
+          x0  : (pi + 1) * gap,
+          df,
+          di,
+          y0  : SY + df * DH,   // equilibrium canvas Y
+          trail: []
+        });
+      }
+    });
+    return ps;
+  }
+
+  // Current canvas position of particle p
+  _pos(p, t) {
+    const { Ah, Av } = this.axes[p.di];
+    const ph = K * p.x0 - OM * t * SPEED;
+    return {
+      cx: p.x0 - Ah * Math.sin(ph),
+      cy: p.y0 - Av * Math.cos(ph)
+    };
+  }
+
+  updateTrails(t) {
+    for (const p of this.parts) {
+      const pos = this._pos(p, t);
+      p.trail.push(pos);
+      if (p.trail.length > this.maxTrail) p.trail.shift();
+    }
+  }
+
+  // ── Draw everything for one frame ──────────────────────
+  draw(t) {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, CW, CH);
+
+    const ph0 = OM * t * SPEED;   // global phase offset
+
+    this._drawBg();
+    this._drawWater(ph0);
+    this._drawWaveLine(ph0);
+    this._drawFloor();
+    this._drawDepthLines();
+    if (ORBITS) this._drawOrbits();
+    if (TRAILS) this._drawTrails();
+    this._drawParticles(t);
+    this._drawAnnotations(t, ph0);
+  }
+
+  _drawBg() {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#020c17';
+    ctx.fillRect(0, 0, CW, CH);
+  }
+
+  _drawWater(ph0) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, CH);
+    for (let x = 0; x <= CW; x += 2) {
+      const y = SY - this.amp * Math.cos(K * x - ph0);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(CW, CH);
+    ctx.closePath();
+
+    const g = ctx.createLinearGradient(0, SY - this.amp, 0, FY + 20);
+    g.addColorStop(0,    this.w1 + 'cc');
+    g.addColorStop(0.06, this.w0 + 'aa');
+    g.addColorStop(0.28, '#040f20dd');
+    g.addColorStop(1.0,  '#010810');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _drawWaveLine(ph0) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    for (let x = 0; x <= CW; x += 2) {
+      const y = SY - this.amp * Math.cos(K * x - ph0);
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = this.acc;
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = this.acc;
+    ctx.shadowBlur  = 10;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  _drawFloor() {
+    const ctx = this.ctx;
+    // Fill below seafloor
+    ctx.fillStyle = '#050e1c';
+    ctx.fillRect(0, FY, CW, CH - FY);
+    // Hatched texture
+    ctx.save();
+    ctx.strokeStyle = '#0c1d2e';
+    ctx.lineWidth = 1;
+    const sp = 13;
+    for (let x = -(CH); x < CW + CH; x += sp) {
+      ctx.beginPath();
+      ctx.moveTo(x, FY);
+      ctx.lineTo(x + CH, FY + CH);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Seafloor line
+    ctx.strokeStyle = '#12283d';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, FY); ctx.lineTo(CW, FY);
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = '#193248';
+    ctx.font = '14px IBM Plex Mono,monospace';
+    ctx.textBaseline = 'top';
+    ctx.fillText('SEAFLOOR   (z = −h)   vertical motion = 0', 10, FY + 6);
+  }
+
+  _drawDepthLines() {
+    const ctx = this.ctx;
+    ctx.setLineDash([3, 8]);
+    ctx.lineWidth = 1;
+    DFS.forEach((df, di) => {
+      if (df === 0 || df === 1) return;
+      const y = SY + df * DH;
+      ctx.globalAlpha = 0.13;
+      ctx.strokeStyle = DCOLS[di];
+      ctx.beginPath();
+      ctx.moveTo(0, y); ctx.lineTo(CW, y);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  _drawOrbits() {
+    const ctx = this.ctx;
+    for (const p of this.parts) {
+      const { Ah, Av } = this.axes[p.di];
+      if (Ah < 0.3 && Av < 0.3) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.09;
+      ctx.strokeStyle = DCOLS[p.di];
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const rx = Math.max(Ah, 0.5);
+      const ry = Math.max(Av, 0.5);
+      ctx.ellipse(p.x0, p.y0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  _drawTrails() {
+    const ctx = this.ctx;
+    for (const p of this.parts) {
+      const trail = p.trail;
+      if (trail.length < 2) continue;
+      const col = DCOLS[p.di];
+      ctx.save();
+      ctx.lineWidth = 1.1;
+      ctx.lineCap = 'round';
+      for (let i = 1; i < trail.length; i++) {
+        const a = (i / trail.length) * 0.6;
+        const prev = trail[i - 1];
+        const curr = trail[i];
+        // Skip large jumps (canvas boundary)
+        if (Math.abs(curr.cx - prev.cx) > 80) continue;
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(prev.cx, prev.cy);
+        ctx.lineTo(curr.cx, curr.cy);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  _drawParticles(t) {
+    const ctx = this.ctx;
+    // Deepest layers first so surface particles render on top
+    const sorted = [...this.parts].sort((a, b) => b.di - a.di);
+    for (const p of sorted) {
+      const { cx, cy } = this._pos(p, t);
+      const col = DCOLS[p.di];
+      const r   = p.di === 0 ? 5.5 : 4.0;
+
+      // Glow halo
+      ctx.save();
+      ctx.shadowColor = col;
+      ctx.shadowBlur  = 12;
+      ctx.fillStyle   = col;
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // White centre
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  _drawAnnotations(t, ph0) {
+    const ctx  = this.ctx;
+    const kh   = this.kh;
+    const acc  = this.acc;
+
+    ctx.font = '14px IBM Plex Mono,monospace';
+
+    // ── Left-side depth labels ──
+    ctx.textAlign = 'left';
+    DFS.forEach((df, di) => {
+      const y   = SY + df * DH;
+      const col = DCOLS[di];
+      const { Ah, Av } = this.axes[di];
+
+      // Label position (avoid overlapping surface/seafloor markers)
+      let lY = y;
+      if (di === 0) lY = y - 16;
+      if (di === 4) lY = y + 8;
+
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle   = col;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(DLABELS[di], 7, lY);
+
+      // Orbit aspect ratio
+      ctx.globalAlpha = 0.38;
+      const ratio = Av > 0.3
+        ? `${(Ah/Av).toFixed(1)}:1`
+        : (Ah > 0.3 ? `${Ah.toFixed(0)}:∞` : '≈0');
+      ctx.fillText(ratio, 7, lY + 11);
+    });
+
+    ctx.globalAlpha = 1;
+
+    // ── Top-left: kh value ──
+    ctx.textBaseline = 'top';
+    ctx.textAlign    = 'left';
+    ctx.fillStyle    = acc;
+    ctx.globalAlpha  = 0.85;
+    ctx.fillText(`kh = ${kh.toFixed(2)}`, 8, 5);
+
+    // ── Top-right: wave speed arrow ──
+    ctx.textAlign   = 'right';
+    ctx.fillText('→  c', CW - 8, 5);
+
+    // ── Wavelength bracket (below top labels) ──
+    const yb = 22;
+    ctx.globalAlpha  = 0.35;
+    ctx.strokeStyle  = acc;
+    ctx.lineWidth    = 1;
+    // Bracket line
+    ctx.beginPath(); ctx.moveTo(8, yb); ctx.lineTo(8 + LAM, yb); ctx.stroke();
+    [8, 8 + LAM].forEach(x => {
+      ctx.beginPath(); ctx.moveTo(x, yb-3); ctx.lineTo(x, yb+3); ctx.stroke();
+    });
+    // Label
+    ctx.globalAlpha  = 0.55;
+    ctx.fillStyle    = acc;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('λ', 8 + LAM/2, yb - 1);
+
+    // ── Right: surface orbit note ──
+    const { Ah: Ah0, Av: Av0 } = this.axes[0];
+    ctx.textAlign   = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha  = 0.4;
+    ctx.fillStyle    = DCOLS[0];
+    ctx.fillText(`surf: ±${Ah0.toFixed(0)} × ±${Av0.toFixed(0)} px`, CW - 8, SY - 16);
+
+    // ── Orbit direction arrow (clockwise indicator near surface) ──
+    // Draw small curved arrow at rightmost surface particle position
+    const xArrow  = (NP - 0.5) * CW / (NP + 1);
+    const yArrow  = SY - 2;
+    const rArrow  = 9;
+    ctx.save();
+    ctx.strokeStyle  = acc;
+    ctx.lineWidth    = 1.2;
+    ctx.globalAlpha  = 0.4;
+    ctx.beginPath();
+    ctx.arc(xArrow, yArrow + rArrow, rArrow, -Math.PI * 0.9, -Math.PI * 0.1);
+    ctx.stroke();
+    // Arrowhead
+    const ex = xArrow + rArrow * Math.cos(-Math.PI * 0.1);
+    const ey = yArrow + rArrow + rArrow * Math.sin(-Math.PI * 0.1);
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - 4, ey - 2);
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - 2, ey + 4);
+    ctx.stroke();
+    ctx.restore();
+
+    // ── Phase crest marker: vertical dashed line at nearest crest ──
+    // Crest at x where K*x - ph0 = 0,±2π,... → x = ph0/K + n*LAM
+    ctx.save();
+    ctx.setLineDash([2, 5]);
+    ctx.strokeStyle  = acc;
+    ctx.lineWidth    = 0.7;
+    ctx.globalAlpha  = 0.2;
+    const x0crest = ((ph0 / K) % LAM + LAM) % LAM;
+    for (let xc = x0crest; xc < CW; xc += LAM) {
+      ctx.beginPath();
+      ctx.moveTo(xc, SY - this.amp - 5);
+      ctx.lineTo(xc, FY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+  }
+}
+
+// ── Build and start panels ────────────────────────────────
+const panels = CFGS.map(cfg => new WavePanel(cfg));
+
+// ── Animation loop ────────────────────────────────────────
+function loop(ts) {
+  if (!LAST) LAST = ts;
+  const dt = (ts - LAST) / 1000;
+  LAST = ts;
+  if (PLAY) TIME += dt;
+  for (const p of panels) {
+    p.updateTrails(TIME);
+    p.draw(TIME);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Controls ──────────────────────────────────────────────
+function togglePlay() {
+  PLAY = !PLAY;
+  document.getElementById('playBtn').textContent = PLAY ? '⏸ Pause' : '▶ Play';
+  if (PLAY) LAST = null;
+}
+
+function toggleTrails() {
+  TRAILS = !TRAILS;
+  const btn = document.getElementById('trailBtn');
+  btn.classList.toggle('on', TRAILS);
+  if (!TRAILS) panels.forEach(p => p.parts.forEach(q => q.trail = []));
+}
+
+function toggleOrbits() {
+  ORBITS = !ORBITS;
+  document.getElementById('orbitBtn').classList.toggle('on', ORBITS);
+}
+
+function resetAnim() {
+  TIME = 0;
+  LAST = null;
+  panels.forEach(p => p.parts.forEach(q => q.trail = []));
+}
+
+function setSpeed(v) {
+  SPEED = parseFloat(v);
+  document.getElementById('spdVal').textContent = SPEED.toFixed(1) + '×';
+}
+</script>
+</body>
+</html>
